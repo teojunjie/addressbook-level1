@@ -14,14 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 
 /*
  * NOTE : =============================================================
@@ -132,6 +125,8 @@ public class AddressBook {
     private static final String COMMAND_EXIT_WORD = "exit";
     private static final String COMMAND_EXIT_DESC = "Exits the program.";
     private static final String COMMAND_EXIT_EXAMPLE = COMMAND_EXIT_WORD;
+
+    private static final String COMMAND_UPDATE_WORD = "update";
 
     private static final String DIVIDER = "===================================================";
 
@@ -383,9 +378,61 @@ public class AddressBook {
             return getUsageInfoForAllCommands();
         case COMMAND_EXIT_WORD:
             executeExitProgramRequest();
+        case COMMAND_UPDATE_WORD:
+            executeUpdatePerson(commandArgs);
+            return "DEFAULT";
         default:
             return getMessageForInvalidCommandInput(commandType, getUsageInfoForAllCommands());
         }
+    }
+
+    private static void executeUpdatePerson(String commandArgs) {
+        final Set<String> keywords = extractKeywordsFromFindPersonArgs(commandArgs);
+        final HashMap<String[], Integer> matchedPersons = new HashMap<String[], Integer>();
+        final ArrayList<String[]> arrayMatchPersons = new ArrayList<>();
+        ArrayList<String[]> persons = getAllPersonsInAddressBook();
+        for (int i = 0; i < persons.size() ; i++) {
+            String [] currentPerson = persons.get(i);
+            final Set<String> wordsInName = new HashSet<>(splitByWhitespace(getNameFromPerson(currentPerson)));
+            if (!Collections.disjoint(wordsInName, keywords)) {
+                matchedPersons.put(currentPerson,i+1);
+                arrayMatchPersons.add(currentPerson);
+            }
+        }
+        if(matchedPersons.size() > 1){
+            showToUser("Cannot update more than 1 person");
+            return;
+        }
+        else{
+            String[] personToUpdate = arrayMatchPersons.get(0);
+            Integer personAddressBookIndex = matchedPersons.get(personToUpdate);
+
+            String personName = getNameFromPerson(personToUpdate);
+            String personEmail = getEmailFromPerson(personToUpdate);
+            String personNumber = getPhoneFromPerson(personToUpdate);
+
+            String encoded = commandArgs;
+            String updatedPersonEmail = extractEmailFromPersonString(encoded);
+            String updatedPersonNumber = extractPhoneFromPersonString(encoded);
+
+            final String[] updatedPerson = makePersonFromData(personName,updatedPersonNumber,updatedPersonEmail);
+
+            if(isPersonDataValid(updatedPerson)) {
+                if (!isDisplayIndexValidForLastPersonListingView(personAddressBookIndex)) {
+                    showToUser(MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
+                    showToUser(personAddressBookIndex.toString());
+                    return;
+                }
+                final String[] targetInModel = getPersonByLastVisibleIndex(personAddressBookIndex);
+                deletePersonFromAddressBook(targetInModel);
+                addPersonToAddressBook(updatedPerson);
+                return;
+            }
+
+
+            return;
+        }
+
     }
 
     /**
